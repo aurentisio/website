@@ -192,6 +192,63 @@ class Sky {
     this._wordTrack = wfs * 0.02;
     this._wordSize = wfs;
     this._wordG = 0;
+    const pfs = wfs;
+    this._phraseFont = '400 ' + pfs.toFixed(1) + 'px "Iowan Old Style", ui-serif, Baskerville, "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif';
+    this._phraseTrack = pfs * 0.08;
+    this._phrases = [
+      this._phrase('Something beautiful is coming', 1, W, H),
+      this._phrase('The universe is full of wonders', -1, W, H)
+    ];
+  }
+
+  _phrase(text, dir, W, H) {
+    const rnd = Math.random, ctx = this._ctx, tr = this._phraseTrack;
+    ctx.font = this._phraseFont;
+    const n = text.length, cs = new Float32Array(n), ch = [];
+    for (let i = 0; i < n; i++) {
+      const w = ctx.measureText(text[i]).width;
+      cs[i] = ctx.measureText(text.slice(0, i)).width + i * tr + w / 2;
+      ch.push(text[i]);
+    }
+    const total = ctx.measureText(text).width + (n - 1) * tr;
+    const mm = ctx.measureText('a');
+    const p = {
+      ch, cs, n, total, dir,
+      asc: mm.actualBoundingBoxAscent || 8,
+      base: dir > 0 ? 0 : Math.PI,
+      spd: 15 + rnd() * 6,
+      f1: 0.06 + rnd() * 0.04, f2: 0.15 + rnd() * 0.08, f3: 0.38 + rnd() * 0.15,
+      p1: rnd() * 6.2832, p2: rnd() * 6.2832, p3: rnd() * 6.2832,
+      glow: new Float32Array(n), cum: new Float32Array(0),
+      ox: new Float32Array(n), oy: new Float32Array(n), vx: new Float32Array(n), vy: new Float32Array(n),
+      sw: Float32Array.from({ length: n }, () => (rnd() - 0.5) * 1.1),
+      rk: Float32Array.from({ length: n }, () => (rnd() - 0.5) * 0.55),
+      x: 0, y: 0, trail: []
+    };
+    this._spawn(p, W, H, true);
+    return p;
+  }
+
+  _spawn(p, W, H, inside) {
+    const rnd = Math.random;
+    p.x = inside ? W * (0.1 + 0.8 * rnd()) : (p.dir > 0 ? -30 : W + 30);
+    p.y = H * (0.15 + 0.7 * rnd());
+    const c = Math.cos(p.base), s = Math.sin(p.base), len = p.total + 80, tr = [];
+    for (let d = len; d >= 0; d -= 2) tr.push(p.x - c * d, p.y - s * d);
+    p.trail = tr;
+    p.glow.fill(0);
+    p.ox.fill(0); p.oy.fill(0); p.vx.fill(0); p.vy.fill(0);
+  }
+
+  _along(p, s) {
+    const T = p.trail, cum = p.cum, m = cum.length;
+    if (s <= 0) return [T[T.length - 2], T[T.length - 1]];
+    let lo = 0, hi = m - 1;
+    if (s >= cum[hi]) { const k = (m - 1 - hi) * 2; return [T[k], T[k + 1]]; }
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] < s) lo = mid; else hi = mid; }
+    const f = (s - cum[lo]) / ((cum[hi] - cum[lo]) || 1);
+    const a = T.length - 2 - lo * 2, b = T.length - 2 - hi * 2;
+    return [T[a] + (T[b] - T[a]) * f, T[a + 1] + (T[b + 1] - T[a + 1]) * f];
   }
 
   _net(W, H) {
@@ -610,6 +667,83 @@ class Sky {
       }
       n.px = sx;
       n.py = sy;
+    }
+
+    const phrases = this._phrases || [];
+    if (phrases.length) {
+      const dpr = this._dpr, RP = R * 1.05, RF = R * 1.15, pDecay = Math.exp(-dt / 1.6);
+      ctx.font = this._phraseFont;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      for (let k = 0; k < phrases.length; k++) {
+        const p = phrases[k];
+        let dv = 1.05 * (0.55 * Math.sin(t * p.f1 + p.p1) + 0.3 * Math.sin(t * p.f2 + p.p2)) + 0.28 * Math.sin(t * p.f3 + p.p3);
+        const dyc = (H / 2 - p.y) / (H / 2);
+        dv += 0.9 * dyc * dyc * dyc * p.dir;
+        if (dv > 1.25) dv = 1.25; else if (dv < -1.25) dv = -1.25;
+        const ang = p.base + dv;
+        p.x += Math.cos(ang) * p.spd * sp * dt;
+        p.y += Math.sin(ang) * p.spd * sp * dt;
+        const T = p.trail;
+        const hx = T[T.length - 2], hy = T[T.length - 1];
+        if ((p.x - hx) * (p.x - hx) + (p.y - hy) * (p.y - hy) >= 4) {
+          T.push(p.x, p.y);
+          const keep = (Math.ceil((p.total + 80) / 2) + 6) * 2;
+          if (T.length > keep) T.splice(0, T.length - keep);
+        }
+        const m = T.length / 2;
+        if (p.cum.length !== m) p.cum = new Float32Array(m);
+        const cum = p.cum;
+        cum[0] = Math.hypot(p.x - T[T.length - 2], p.y - T[T.length - 1]);
+        for (let j = 1; j < m; j++) {
+          const a = T.length - 2 * j, b = a - 2;
+          cum[j] = cum[j - 1] + Math.hypot(T[a] - T[b], T[a + 1] - T[b + 1]);
+        }
+        const tx = T[0], ty = T[1], mg = 40;
+        if ((p.dir > 0 && tx > W + mg) || (p.dir < 0 && tx < -mg) || ty < -p.total || ty > H + p.total) {
+          this._spawn(p, W, H, false);
+          continue;
+        }
+        const asc = p.asc;
+        for (let i = 0; i < p.n; i++) {
+          const s = p.dir > 0 ? p.total - p.cs[i] : p.cs[i];
+          const q = this._along(p, s);
+          let tgt = 0, fx = 0, fy = 0;
+          if (L > 0.004) {
+            const dx = q[0] - lx, dy = q[1] - ly, d = Math.sqrt(dx * dx + dy * dy);
+            if (d < RP) {
+              let u = (1 - d / RP) * 1.5;
+              if (u > 1) u = 1;
+              tgt = u * u * (3 - 2 * u) * L;
+            }
+            if (d < RF) {
+              const u = 1 - d / RF, F = u * u * L * 105, nx = d > 0.5 ? dx / d : 0, ny = d > 0.5 ? dy / d : 0, w = p.sw[i];
+              fx = (nx - ny * w) * F;
+              fy = (ny + nx * w) * F;
+            }
+          }
+          p.vx[i] += (fx - 2.6 * p.ox[i] - 2.2 * p.vx[i]) * dt;
+          p.vy[i] += (fy - 2.6 * p.oy[i] - 2.2 * p.vy[i]) * dt;
+          p.ox[i] += p.vx[i] * dt;
+          p.oy[i] += p.vy[i] * dt;
+          let g = p.glow[i] * pDecay;
+          if (tgt > g) g += (tgt - g) * rise;
+          if (g < 0.003) g = 0;
+          p.glow[i] = g;
+          if (g === 0 || p.ch[i] === ' ') continue;
+          const qa = this._along(p, s - 5), qb = this._along(p, s + 5);
+          let rot = Math.atan2(qa[1] - qb[1], qa[0] - qb[0]);
+          if (p.dir < 0) rot += Math.PI;
+          const om = Math.hypot(p.ox[i], p.oy[i]);
+          rot += p.rk[i] * (om > 60 ? 1 : om / 60);
+          const cr = Math.cos(rot), sr = Math.sin(rot);
+          ctx.globalAlpha = g > 1 ? 0.92 : g * 0.92;
+          ctx.setTransform(dpr * cr, dpr * sr, -dpr * sr, dpr * cr, dpr * (q[0] + p.ox[i]), dpr * (q[1] + p.oy[i]));
+          ctx.fillText(p.ch[i], 0, asc / 2);
+        }
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.textAlign = 'left';
     }
 
     const RWd = R * 0.95;
