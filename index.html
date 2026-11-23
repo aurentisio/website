@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>aurentis</title>
+<meta name="description" content="aurentis">
+<meta name="theme-color" content="#000000">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#000}
+body{overscroll-behavior:none}
+#stage{position:fixed;top:0;right:0;bottom:0;left:0;cursor:none;touch-action:none;-webkit-user-select:none;user-select:none}
+#stage canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;touch-action:none}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.legal{position:fixed;right:18px;bottom:14px;z-index:2;font:400 11px/1.4 "Iowan Old Style",ui-serif,Baskerville,"Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;letter-spacing:.06em;color:#fff;cursor:auto}
+.legal a{color:#fff;text-decoration:none;opacity:var(--glow,.14);transition:opacity .35s ease}
+.legal a:hover,.legal a:focus-visible{opacity:1;outline:none}
+.legal span{opacity:var(--glow,.14)}
+</style>
+</head>
+<body>
+<div id="stage">
+<h1 class="sr">aurentis</h1>
+<canvas data-aurentis="1" role="img" aria-label="aurentis"></canvas>
+</div>
+<nav class="legal" data-legal="1" aria-label="Rechtliches"><a href="impressum.html">Impressum</a> <span>·</span> <a href="datenschutz.html">Datenschutz</a></nav>
+<script src="sky.js"></script>
+</body>
+</html>
