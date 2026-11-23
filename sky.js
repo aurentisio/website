@@ -139,7 +139,9 @@ class Sky {
     };
     const leave = () => { P.down = false; P.inside = false; };
     this._handlers = [['pointermove', move], ['pointerdown', down], ['pointerup', up], ['pointerleave', leave], ['pointercancel', leave]];
-    for (let i = 0; i < this._handlers.length; i++) c.addEventListener(this._handlers[i][0], this._handlers[i][1], { passive: true });
+    for (let i = 0; i < this._handlers.length; i++) window.addEventListener(this._handlers[i][0], this._handlers[i][1], { passive: true });
+    document.documentElement.addEventListener('pointerleave', leave, { passive: true });
+    window.addEventListener('blur', leave);
   }
 
   _resize() {
@@ -402,7 +404,7 @@ class Sky {
     P.vy *= kv;
     const goal = P.inside ? 1 : 0;
     P.light += (goal - P.light) * (1 - Math.exp(-dt * (goal ? 6 : 2.2)));
-    const kf = 1 - Math.exp(-dt * 18);
+    const kf = 1 - Math.exp(-dt * 30);
     P.lx += (P.x - P.lx) * kf;
     P.ly += (P.y - P.ly) * kf;
     const L = P.light, lx = P.lx, ly = P.ly, R = this._R;
@@ -666,10 +668,6 @@ class Sky {
       }
     }
 
-    if (L > 0.02 && P.has) {
-      ctx.globalAlpha = 0.6 * L;
-      ctx.fillRect(lx - 1, ly - 1, 2, 2);
-    }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
   }
