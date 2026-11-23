@@ -681,18 +681,27 @@ class Sky {
       'background:#dfe6ff;box-shadow:0 0 5px 1px rgba(223,230,255,.45);mix-blend-mode:difference;pointer-events:none;' +
       'z-index:2147483647;opacity:0;transform:translate3d(-50px,-50px,0);will-change:transform';
     document.body.appendChild(d);
-    let on = false;
+    const root = document.documentElement;
+    let on = false, tick = 0;
+    // Keep the system pointer hidden: alternate between two invisible cursors so the
+    // browser applies it again even while the mouse rests.
+    const keep = () => { root.classList.toggle('c2'); };
+    const run = () => { if (!tick) tick = setInterval(keep, 80); };
+    const stop = () => { if (tick) { clearInterval(tick); tick = 0; } };
     const put = (e) => {
       if (e.pointerType && e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
       d.style.transform = 'translate3d(' + e.clientX + 'px,' + e.clientY + 'px,0)';
       if (!on) { d.style.opacity = '1'; on = true; }
+      run();
     };
-    const off = () => { if (on) { d.style.opacity = '0'; on = false; } };
+    const hide = () => { if (on) { d.style.opacity = '0'; on = false; } };
+    const out = () => { hide(); stop(); };
     window.addEventListener('pointermove', put, { passive: true });
     window.addEventListener('pointerdown', put, { passive: true });
     window.addEventListener('pointerover', put, { passive: true });
-    document.documentElement.addEventListener('pointerleave', off, { passive: true });
-    window.addEventListener('blur', off);
+    root.addEventListener('pointerleave', out, { passive: true });
+    window.addEventListener('blur', hide);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) out(); });
   }
 
   function start() {
