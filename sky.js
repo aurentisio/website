@@ -404,7 +404,7 @@ class Sky {
     P.vy *= kv;
     const goal = P.inside ? 1 : 0;
     P.light += (goal - P.light) * (1 - Math.exp(-dt * (goal ? 6 : 2.2)));
-    const kf = 1 - Math.exp(-dt * 30);
+    const kf = 1;
     P.lx += (P.x - P.lx) * kf;
     P.ly += (P.y - P.ly) * kf;
     const L = P.light, lx = P.lx, ly = P.ly, R = this._R;
@@ -673,7 +673,30 @@ class Sky {
   }
 }
 
+  function dot() {
+    if (window.matchMedia && !window.matchMedia('(any-pointer: fine)').matches) return;
+    const d = document.createElement('div');
+    d.setAttribute('aria-hidden', 'true');
+    d.style.cssText = 'position:fixed;left:0;top:0;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;' +
+      'background:#dfe6ff;box-shadow:0 0 5px 1px rgba(223,230,255,.45);mix-blend-mode:difference;pointer-events:none;' +
+      'z-index:2147483647;opacity:0;transform:translate3d(-50px,-50px,0);will-change:transform';
+    document.body.appendChild(d);
+    let on = false;
+    const put = (e) => {
+      if (e.pointerType && e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
+      d.style.transform = 'translate3d(' + e.clientX + 'px,' + e.clientY + 'px,0)';
+      if (!on) { d.style.opacity = '1'; on = true; }
+    };
+    const off = () => { if (on) { d.style.opacity = '0'; on = false; } };
+    window.addEventListener('pointermove', put, { passive: true });
+    window.addEventListener('pointerdown', put, { passive: true });
+    window.addEventListener('pointerover', put, { passive: true });
+    document.documentElement.addEventListener('pointerleave', off, { passive: true });
+    window.addEventListener('blur', off);
+  }
+
   function start() {
+    dot();
     const c = document.querySelector('canvas[data-aurentis]');
     if (!c) return;
     const sky = new Sky({ farbe: '#dfe6ff', dichte: 1, licht: 1 });
